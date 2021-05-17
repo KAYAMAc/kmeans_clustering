@@ -1,0 +1,56 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+import nltk
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from nltk.corpus import brown
+nltk.download("brown")
+nltk.download("stopwords")
+nltk.download("wordnet")
+nltk.download("punkt")
+nltk.download("reuters")
+from nltk.corpus import reuters as corpus
+en_stop = nltk.corpus.stopwords.words('english')
+from nltk.corpus import wordnet as wn
+
+def preprocess_word(word, stopwordset):
+    word=word.lower()
+    if word in [",","."]:
+        return None
+    if word in stopwordset:
+        return None
+    lemma = wn.morphy(word)
+    if lemma is None:
+        return word
+    elif lemma in stopwordset: 
+        return None
+    else:
+        return lemma
+    
+def preprocess_document(document):
+    document=[preprocess_word(w, en_stop) for w in document]
+    document=[w for w in document if w is not None]
+    return document
+fileids=[]
+cate=["religion","government","science_fiction","romance","adventure"]
+def preprocess_documents(documents):
+    return [preprocess_document(document) for document in documents]
+for fileid in brown.fileids(cate):
+    fileids.append(fileid)
+docs=[brown.words(fileid) for fileid in fileids]
+pre_doc=preprocess_documents(docs)
+
+vectorizer = TfidfVectorizer(max_features=600, token_pattern=u'(?u)\\b\\w+\\b' )
+pre_docs=[" ".join(doc) for doc in pre_doc]
+tf_idf = vectorizer.fit_transform(pre_docs)
+num_clusters = 5
+km = KMeans(n_clusters=num_clusters, random_state = 0)
+pca_2 = PCA(n_components=2)
+pca_2_result = pca_2.fit_transform(tf_idf.toarray())
+clusters = km.fit_predict(tf_idf)
+plt.scatter(pca_2_result[:,0],pca_2_result[:,1],c=clusters, s=50, cmap='viridis')
+centers = km.cluster_centers_
+centers_result = pca_2.fit_transform(centers)
+plt.scatter(centers_result[:, 0], centers_result[:, 1], c='red',s=100,  alpha=0.5)
